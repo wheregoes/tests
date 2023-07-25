@@ -43,11 +43,11 @@ def print_callback(message, context):
                             cursor.execute("SELECT COUNT(*) FROM sent_messages WHERE domain=?", (domain_name,))
                             result = cursor.fetchone()
                             if result and result[0] == 0:
-                                # Print the message to the console
-                                print(message_text)
-                                log_matched_terms(timestamp, domain_name)
+                                # Print the message to the console with matched term
+                                print(f"{message_text} [Matched Term: {term}]")
+                                log_matched_terms(timestamp, domain_name, term)
                                 # Save the matched domain name and timestamp to the database
-                                cursor.execute("INSERT INTO sent_messages (timestamp, domain) VALUES (?, ?)", (timestamp, domain_name))
+                                cursor.execute("INSERT INTO sent_messages (timestamp, domain, term) VALUES (?, ?, ?)", (timestamp, domain_name, term))
                                 conn.commit()
                             else:
                                 # Log to the db_checks.log file that the domain was already present
@@ -57,9 +57,9 @@ def print_callback(message, context):
                         logging.error("SQLite error: {}".format(e))
                     break  # Stop checking further terms once a match is found
 
-def log_matched_terms(timestamp, message):
+def log_matched_terms(timestamp, message, term):
     with open('logs/matched-terms.log', 'a') as file:
-        file.write(f"[{timestamp}] {message}\n")
+        file.write(f"[{timestamp}] {message} [Matched Term: {term}]\n")
 
 def read_terms_from_file(file_path):
     with open(file_path, 'r') as file:
@@ -99,7 +99,7 @@ def main():
         cursor.execute("DROP TABLE IF EXISTS sent_messages")
         # Create a new table with the updated schema
         cursor.execute('''CREATE TABLE IF NOT EXISTS sent_messages 
-                          (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, domain TEXT NOT NULL)''')
+                          (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, domain TEXT NOT NULL, term TEXT NOT NULL)''')
         conn.commit()
 
     # Start the CertStream monitor
